@@ -3,94 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D 骰子 - 質感按鈕升級版</title>
+    <title>3D 骰子 - 經典按鈕版</title>
     <style>
         :root { 
-            --primary-gradient: linear-gradient(180deg, #5dade2 0%, #3498db 100%);
             --bg: #eaeded; 
             --dark: #34495e; 
             --bowl-surface: #e2e4e6; 
-            --bowl-border: #abb2b9; 
+            --bowl-border: #abb2b9;
+            --btn-yellow: #f1c40f;
+            --btn-red: #e74c3c;
+            --btn-red-dark: #c0392b;
         }
         body { font-family: -apple-system, sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
         
-        /* 收合管理卡片 */
-        .manager-card { background: white; width: 90%; max-width: 420px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 10px; overflow: hidden; z-index: 10; border: 1px solid #ddd; }
-        .manager-header { padding: 15px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
+        /* 管理卡片保持收合 */
+        .manager-card { background: white; width: 90%; max-width: 400px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 10px; overflow: hidden; z-index: 10; border: 1px solid #ddd; }
+        .manager-header { padding: 12px 15px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .manager-header h3 { margin: 0; font-size: 16px; color: var(--dark); }
         .arrow { transition: transform 0.3s; font-size: 12px; color: #888; }
         .arrow.open { transform: rotate(180deg); }
         .manager-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 15px; }
         .manager-content.open { max-height: 350px; padding: 0 15px 15px 15px; }
-
         .pool-list { max-height: 120px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
         .pool-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
         .pool-item input { margin-right: 10px; }
-        .pool-item span { flex-grow: 1; color: var(--dark); }
-        .pool-item button { background: #e74c3c; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 11px; }
-        
+        .pool-item span { flex-grow: 1; }
+        .pool-item button { background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 11px; }
         .add-zone { display: flex; gap: 5px; }
         .add-zone input { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
-        .add-zone button { background: #3498db; color: white; border: none; border-radius: 8px; padding: 0 15px; font-weight: bold; }
+        .add-zone button { background: var(--dark); color: white; border: none; border-radius: 8px; padding: 0 15px; }
 
-        /* 碗公容器 */
+        /* 碗公 */
         #canvas-wrap { 
             position: relative; width: 340px; height: 340px; border-radius: 50%; 
-            background: var(--bowl-surface); 
-            border: 12px solid var(--bowl-border); 
+            background: var(--bowl-surface); border: 12px solid var(--bowl-border); 
             box-shadow: inset 0 15px 40px rgba(0,0,0,0.1), 0 10px 25px rgba(0,0,0,0.05);
-            overflow: hidden; touch-action: none; margin: 15px 0;
+            overflow: hidden; touch-action: none; margin: 10px 0;
         }
         #diceCanvas { width: 100%; height: 100%; }
+
+        /* --- 黃座紅鈕設計 --- */
+        .btn-wrapper { margin-top: 20px; perspective: 1000px; }
         
-        /* --- 參考圖質感的按鈕設計 --- */
-        .btn-container { width: 90%; max-width: 420px; display: flex; justify-content: center; margin-top: 10px; }
-        #btn { 
-            width: 100%;
-            padding: 16px 30px; 
-            font-size: 20px; 
-            font-weight: 600;
-            color: white;
-            background: var(--primary-gradient);
-            border: none;
-            border-radius: 12px;
-            /* 外部陰影：營造浮起感 */
-            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.4);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            outline: none;
+        /* 黃色方形底座 */
+        .btn-base {
+            width: 100px; height: 100px;
+            background: var(--btn-yellow);
+            border-radius: 15px;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 8px 0 #d4ac0d, 0 15px 20px rgba(0,0,0,0.15); /* 立體感底座 */
             position: relative;
+            cursor: pointer;
+            transition: transform 0.1s;
         }
-        /* 內部亮邊效果 */
-        #btn::after {
-            content: '';
-            position: absolute;
-            top: 1px; left: 1px; right: 1px; bottom: 50%;
-            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
-            border-radius: 10px 10px 0 0;
-            pointer-events: none;
+
+        /* 紅色圓形鈕 */
+        .btn-trigger {
+            width: 70px; height: 70px;
+            background: radial-gradient(circle at 30% 30%, #ff5e57, var(--btn-red));
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 5px 0 var(--btn-red-dark), inset 0 2px 2px rgba(255,255,255,0.4);
+            display: flex; justify-content: center; align-items: center;
+            color: white; font-weight: bold; font-size: 16px;
+            transition: all 0.1s;
+            pointer-events: none; /* 讓點擊事件穿透到底座 */
+            user-select: none;
         }
-        #btn:active { 
-            transform: translateY(2px);
-            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
-        }
-        #btn:disabled { 
-            background: #bdc3c7; 
-            box-shadow: none; 
-            cursor: not-allowed;
-            transform: none;
-        }
-        #btn:disabled::after { display: none; }
+
+        /* 點擊效果 */
+        .btn-base:active { transform: translateY(4px); box-shadow: 0 4px 0 #d4ac0d, 0 10px 15px rgba(0,0,0,0.1); }
+        .btn-base:active .btn-trigger { transform: translateY(2px); box-shadow: 0 2px 0 var(--btn-red-dark); }
+        
+        /* 禁用狀態 */
+        .btn-base.disabled { background: #d5dbdb; cursor: not-allowed; box-shadow: 0 6px 0 #aab7b8; }
+        .btn-base.disabled .btn-trigger { background: #bdc3c7; box-shadow: 0 4px 0 #95a5a6; color: #ecf0f1; }
 
         #status { margin: 10px; font-weight: bold; color: var(--dark); font-size: 22px; height: 30px; text-align: center; }
-        .count-hint { font-size: 13px; color: #d35400; font-weight: normal; }
+        .count-hint { font-size: 12px; color: #e67e22; }
     </style>
 </head>
 <body>
 
 <div class="manager-card">
     <div class="manager-header" id="toggleHeader">
-        <h3>名單庫 <span class="count-hint" id="countHint">已選: 6/6</span></h3>
+        <h3>名單管理 <span class="count-hint" id="countHint">已選: 6/6</span></h3>
         <span class="arrow" id="arrow">▼</span>
     </div>
     <div class="manager-content" id="managerContent">
@@ -106,14 +103,16 @@
 
 <div id="status">準備就緒</div>
 
-<div class="btn-container">
-    <button id="btn" disabled>請選滿 6 個面</button>
+<div class="btn-wrapper">
+    <div class="btn-base" id="btnBase">
+        <div class="btn-trigger" id="btnTrigger">GO!</div>
+    </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const AppData = {
-    KEY: 'dice_pro_v10_styled_btn',
+    KEY: 'dice_pro_v11_retro_btn',
     data: {
         pool: ["鳳城", "宋江", "妯娌麵", "尚芳", "來喫", "存嘉"],
         selected: ["鳳城", "宋江", "妯娌麵", "尚芳", "來喫", "存嘉"]
@@ -129,7 +128,7 @@ let scene, camera, renderer, dice;
 let isRolling = false, isSettling = false;
 let velocity = new THREE.Vector3(), angularVelocity = new THREE.Vector3();
 
-// --- 收合邏輯 ---
+// --- 收合 & UI ---
 const toggleHeader = document.getElementById('toggleHeader');
 const managerContent = document.getElementById('managerContent');
 const arrow = document.getElementById('arrow');
@@ -145,11 +144,7 @@ function renderPool() {
         const div = document.createElement('div');
         div.className = 'pool-item';
         const isChecked = AppData.data.selected.includes(item);
-        div.innerHTML = `
-            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelect('${item}')">
-            <span>${item}</span>
-            <button onclick="removeItem('${item}')">刪除</button>
-        `;
+        div.innerHTML = `<input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelect('${item}')"><span>${item}</span><button onclick="removeItem('${item}')">刪</button>`;
         list.appendChild(div);
     });
     updateUIStatus();
@@ -165,18 +160,24 @@ function toggleSelect(item) {
     AppData.save(); updateUIStatus(); updateTextures();
 }
 
+function updateUIStatus() {
+    const count = AppData.data.selected.length;
+    document.getElementById('countHint').innerText = `已選: ${count}/6`;
+    const btnBase = document.getElementById('btnBase');
+    const btnTrigger = document.getElementById('btnTrigger');
+    if (count === 6) {
+        btnBase.classList.remove('disabled');
+        btnTrigger.innerText = "GO!";
+    } else {
+        btnBase.classList.add('disabled');
+        btnTrigger.innerText = `${6-count}`;
+    }
+}
+
 function removeItem(item) {
     AppData.data.pool = AppData.data.pool.filter(i => i !== item);
     AppData.data.selected = AppData.data.selected.filter(i => i !== item);
     AppData.save(); renderPool();
-}
-
-function updateUIStatus() {
-    const count = AppData.data.selected.length;
-    document.getElementById('countHint').innerText = `已選: ${count}/6`;
-    const btn = document.getElementById('btn');
-    btn.disabled = count !== 6;
-    btn.innerText = count === 6 ? "開始擲骰" : `還差 ${6-count} 個`;
 }
 
 document.getElementById('addBtn').onclick = (e) => {
@@ -188,72 +189,50 @@ document.getElementById('addBtn').onclick = (e) => {
     }
 };
 
-// --- 3D 邏輯 ---
+// --- 3D 核心 ---
 function drawFace(text) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256; canvas.height = 256;
+    const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = 'white'; ctx.fillRect(0,0,256,256);
     ctx.fillStyle = '#1c2833'; 
-    const chars = text.split('');
-    const len = chars.length;
-    const fontSize = len > 4 ? 46 : 70; 
+    const chars = text.split(''); const len = chars.length;
+    const fontSize = len > 4 ? 46 : 72;
     ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const positions = {
-        1: [[128, 128]], 2: [[70, 70], [186, 186]], 3: [[70, 70], [186, 70], [128, 186]],
-        4: [[70, 70], [186, 70], [70, 186], [186, 186]], 5: [[70, 70], [186, 70], [128, 128], [70, 186], [186, 186]],
-        6: [[70, 55], [186, 55], [70, 128], [186, 128], [70, 201], [186, 201]]
-    };
+    const positions = { 1: [[128, 128]], 2: [[70, 70], [186, 186]], 3: [[70, 70], [186, 70], [128, 186]], 4: [[70, 70], [186, 70], [70, 186], [186, 186]], 5: [[70, 70], [186, 70], [128, 128], [70, 186], [186, 186]], 6: [[70, 55], [186, 55], [70, 128], [186, 128], [70, 201], [186, 201]] };
     const pos = positions[Math.min(len, 6)] || [[128, 128]];
-    chars.forEach((char, i) => {
-        if(pos[i]) ctx.fillText(char, pos[i][0], pos[i][1]);
-        else if (i === 0) ctx.fillText(text, 128, 128); 
-    });
+    chars.forEach((char, i) => { if(pos[i]) ctx.fillText(char, pos[i][0], pos[i][1]); });
     return new THREE.CanvasTexture(canvas);
 }
 
 function updateTextures() {
-    if (AppData.data.selected.length < 6) return;
+    if (AppData.data.selected.length < 6 || !dice) return;
     dice.material.forEach((mat, i) => { mat.map = drawFace(AppData.data.selected[i]); });
 }
 
 function init3D() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xe2e4e6); 
-    camera = new THREE.PerspectiveCamera(25, 1, 0.1, 1000);
-    camera.position.set(0, 580, 0); 
-    camera.lookAt(0, 0, 0);
+    scene = new THREE.Scene(); scene.background = new THREE.Color(0xe2e4e6); 
+    camera = new THREE.PerspectiveCamera(25, 1, 0.1, 1000); camera.position.set(0, 580, 0); camera.lookAt(0, 0, 0);
     renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('diceCanvas'), antialias: true });
     renderer.setSize(340, 340);
     scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-    const pointLight = new THREE.PointLight(0xffffff, 0.4);
-    pointLight.position.set(0, 300, 100);
-    scene.add(pointLight);
+    const pointLight = new THREE.PointLight(0xffffff, 0.4); pointLight.position.set(0, 300, 100); scene.add(pointLight);
     dice = new THREE.Mesh(new THREE.BoxGeometry(80, 80, 80), Array.from({length: 6}, () => new THREE.MeshPhongMaterial({ color: 0xffffff })));
-    scene.add(dice);
-    updateTextures();
-    renderer.render(scene, camera);
+    scene.add(dice); updateTextures(); renderer.render(scene, camera);
 }
 
 function roll() {
-    if (isRolling || isSettling) return;
+    if (isRolling || isSettling || AppData.data.selected.length < 6) return;
     updateTextures();
     dice.position.set(0, 180, 0);
     velocity.set((Math.random()-0.5)*50, -12, (Math.random()-0.5)*50);
     angularVelocity.set(Math.random()*10, Math.random()*10, Math.random()*10);
     isRolling = true;
-    document.getElementById('btn').disabled = true;
-    document.getElementById('status').innerText = "擲骰中...";
+    document.getElementById('status').innerText = "決定中...";
     const anim = () => {
         if (!isRolling) return;
-        velocity.y -= 1.3;
-        velocity.multiplyScalar(0.985);
-        angularVelocity.multiplyScalar(0.985);
-        if (dice.position.y <= 0) {
-            dice.position.y = 0; velocity.y *= -0.25;
-            velocity.x -= dice.position.x * 0.18; velocity.z -= dice.position.z * 0.18;
-        }
+        velocity.y -= 1.3; velocity.multiplyScalar(0.985); angularVelocity.multiplyScalar(0.985);
+        if (dice.position.y <= 0) { dice.position.y = 0; velocity.y *= -0.25; velocity.x -= dice.position.x * 0.18; velocity.z -= dice.position.z * 0.18; }
         dice.position.add(velocity); dice.rotation.x += angularVelocity.x; dice.rotation.y += angularVelocity.y; dice.rotation.z += angularVelocity.z;
         if (velocity.length() < 0.8 && Math.abs(dice.position.y) < 2) { isRolling = false; settle(); } 
         else { renderer.render(scene, camera); requestAnimationFrame(anim); }
@@ -266,10 +245,7 @@ function settle() {
     const worldUp = new THREE.Vector3(0, 1, 0);
     const normals = [new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,-1,0), new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)];
     let maxDot = -Infinity, bestIdx = 0;
-    normals.forEach((n, i) => {
-        const wn = n.clone().applyQuaternion(dice.quaternion);
-        if (wn.dot(worldUp) > maxDot) { maxDot = wn.dot(worldUp); bestIdx = i; }
-    });
+    normals.forEach((n, i) => { const wn = n.clone().applyQuaternion(dice.quaternion); if (wn.dot(worldUp) > maxDot) { maxDot = wn.dot(worldUp); bestIdx = i; } });
     const targetQuat = new THREE.Quaternion().setFromUnitVectors(normals[bestIdx], worldUp);
     const startQ = dice.quaternion.clone(), startP = dice.position.clone();
     let startT = null;
@@ -281,17 +257,13 @@ function settle() {
         dice.position.lerpVectors(startP, new THREE.Vector3(0,0,0), ease);
         renderer.render(scene, camera);
         if (p < 1) requestAnimationFrame(anim);
-        else {
-            isSettling = false;
-            document.getElementById('status').innerText = "結果：" + AppData.data.selected[bestIdx];
-            updateUIStatus();
-        }
+        else { isSettling = false; document.getElementById('status').innerText = "結果：" + AppData.data.selected[bestIdx]; }
     };
     requestAnimationFrame(anim);
 }
 
 AppData.load(); renderPool(); init3D();
-document.getElementById('btn').onclick = roll;
+document.getElementById('btnBase').onclick = roll;
 </script>
 </body>
 </html>
