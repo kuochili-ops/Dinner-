@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D 骰子 - 個人預設選單版</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f0f0f0; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
+        .input-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; max-width: 360px; margin-bottom: 10px; }
+        input { padding: 10px; border: 1px solid #bbb; border-radius: 8px; text-align: center; font-size: 16px; width: calc(100% - 22px); transition: border-color 0.3s; }
+        input:focus { border-color: #3498db; outline: none; background: #fff; }
+        #canvas-wrap { 
+            position: relative; width: 340px; height: 340px; border-radius: 50%; 
+            background: #2c3e50; border: 12px solid #555; box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            overflow: hidden; touch-action: none;
+        }
+        #diceCanvas { width: 100%; height: 100%; }
+        #btn { width: 100%; max-width: 360px; padding: 18px; background: #3498db; color: white; border: none; border-radius: 12px; font-size: 20px; font-weight: bold; margin-top: 15px; box-shadow: 0 5px 0 #2980b9; cursor: pointer; }
+        #btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #2980b9; }
+        #status { margin: 10px; font-weight: bold; color: #2c3e50; font-size: 22px; height: 26px; }
+        .hint { font-size: 12px; color: #7f8c8d; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="input-list" id="inputContainer">
+    <input type="text" class="opt" placeholder="選項 1">
+    <input type="text" class="opt" placeholder="選項 2">
+    <input type="text" class="opt" placeholder="選項 3">
+    <input type="text" class="opt" placeholder="選項 4">
+    <input type="text" class="opt" placeholder="選項 5">
+    <input type="text" class="opt" placeholder="選項 6">
+</div>
+<div class="hint">系統會自動儲存您的個人選單</div>
+
+<div id="canvas-wrap"><canvas id="diceCanvas"></canvas></div>
+
+<button id="btn">開始擲骰</button>
+<div id="status">準備就緒</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// --- 儲存模組 ---
+const StorageManager = {
+    KEY: 'user_dice_menu',
+    save(options) {
+        localStorage.setItem(this.KEY, JSON.stringify(options));
+    },
+    load() {
+        const data = localStorage.getItem(this.KEY);
+        return data ? JSON.parse(data) : ["鳳城", "宋江", "妯娌麵", "尚芳", "來喫", "存嘉"];
+    }
+};
+
+let scene, camera, renderer, dice;
+const canvas = document.getElementById('diceCanvas');
+const btn = document.getElementById('btn');
+const status = document.getElementById('status');
+const inputs = document.querySelectorAll('.opt');
+
+let velocity = new THREE.Vector3(0, 0, 0);
+let angularVelocity = new THREE.Vector3(0, 0, 0);
+let isRolling = false;
+let isSettling = false;
+
+const FACE_QUATS = [
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))
+];
+
+function init() {
+    // 1. 載入個人化選單
+    const savedMenu = StorageManager.load();
+    inputs.forEach((input, i) => {
+        input.value = savedMenu[i] || "";
+        // 監聽輸入變化，自動儲存
+        input.addEventListener('input', () => {
+            const currentMenu = Array.from(inputs).map(inp => inp.value);
+            StorageManager.save(currentMenu);
+        });
+    });
+
+    // 2. Three.js 初始化
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2c3e50);
+    camera = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
+    camera.position.set(0, 450, 0); 
+    camera.lookAt(0, 0, 0);
+
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(340, 340);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+    const light = new THREE.DirectionalLight(0xffffff, 0.4);
+    light.position.set(0, 300, 50);
+    scene.add(light);
+
+    const geo = new THREE.BoxGeometry(68, 68, 68);
+    const mats = Array.from({length: 6}, () => new THREE.MeshPhongMaterial({ color: 0xffffff }));
+    dice = new THREE.Mesh(geo, mats);
+    scene.add(dice);
+    
+    resetDice();
+}
+
+function resetDice() {
+    dice.position.set(0, 0, 0); 
+    dice.quaternion.copy(FACE_QUATS[2]); 
+    updateDiceTextures();
+    renderer.render(scene, camera);
+}
+
+function updateDiceTextures() {
+    const opts = Array.from(inputs).map(i => i.value || " ");
+    dice.material.forEach((mat, i) => {
+        const tCanvas = document.createElement('canvas');
+        tCanvas.width = 256; tCanvas.height = 256;
+        const ctx = tCanvas.getContext('2d');
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, 256, 256);
+        ctx.fillStyle = 'black';
+        ctx.font = 'bold 50px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(opts[i], 128, 128);
+        mat.map = new THREE.CanvasTexture(tCanvas);
+    });
+}
+
+function roll() {
+    if (isRolling || isSettling) return;
+    updateDiceTextures();
+    
+    dice.position.set(0, 150, 0); 
+    velocity.set((Math.random()-0.5)*45, -8, (Math.random()-0.5)*45);
+    angularVelocity.set(Math.random()*6, Math.random()*6, Math.random()*6);
+    
+    isRolling = true;
+    btn.disabled = true;
+    status.innerText = "擲骰中...";
+
+    const animate = () => {
+        if (!isRolling) return;
+        velocity.y -= 1.1; 
+        velocity.multiplyScalar(0.98); 
+        angularVelocity.multiplyScalar(0.98); 
+        
+        if (dice.position.y <= 0) {
+            dice.position.y = 0;
+            velocity.y *= -0.25; 
+            velocity.x -= dice.position.x * 0.12;
+            velocity.z -= dice.position.z * 0.12;
+        }
+
+        dice.position.add(velocity);
+        dice.rotation.x += angularVelocity.x;
+        dice.rotation.y += angularVelocity.y;
+        dice.rotation.z += angularVelocity.z;
+
+        if (velocity.length() < 1.0 && Math.abs(dice.position.y) < 3) {
+            isRolling = false;
+            startSettling();
+        } else {
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+    };
+    animate();
+}
+
+function startSettling() {
+    isSettling = true;
+    let maxDot = -1, bestIdx = 2;
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    const localDirs = [
+        new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+        new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
+        new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)
+    ];
+
+    localDirs.forEach((v, i) => {
+        const worldV = v.clone().applyQuaternion(dice.quaternion);
+        if (worldV.dot(worldUp) > maxDot) { 
+            maxDot = worldV.dot(worldUp); 
+            bestIdx = i; 
+        }
+    });
+
+    const targetQuat = FACE_QUATS[bestIdx].clone();
+    const startQuat = dice.quaternion.clone();
+    const startPos = dice.position.clone();
+    const targetPos = new THREE.Vector3(0, 0, 0);
+    
+    let startTime = null;
+    const duration = 800;
+
+    const settleAnimate = (timestamp) => {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 4);
+
+        dice.quaternion.slerpQuaternions(startQuat, targetQuat, ease);
+        dice.position.lerpVectors(startPos, targetPos, ease);
+
+        renderer.render(scene, camera);
+
+        if (progress < 1) {
+            requestAnimationFrame(settleAnimate);
+        } else {
+            isSettling = false;
+            const result = inputs[bestIdx].value;
+            status.innerText = "結果：" + result;
+            btn.disabled = false;
+        }
+    };
+    requestAnimationFrame(settleAnimate);
+}
+
+init();
+btn.addEventListener('click', roll);
+</script>
+
+</body>
+</html>
