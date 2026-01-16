@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D 骰子 - 最終邏輯校對版</title>
+    <title>3D 骰子 - 邏輯修正最終版</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f4f4f4; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; overflow-x: hidden; }
+        body { font-family: -apple-system, sans-serif; background: #f4f4f4; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
         .input-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; max-width: 360px; margin-bottom: 10px; }
-        input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; text-align: center; font-size: 16px; width: calc(100% - 26px); background: #fff; }
-        .hint { font-size: 12px; color: #888; margin-bottom: 10px; }
+        input { padding: 12px; border: 1px solid #ccc; border-radius: 8px; text-align: center; font-size: 16px; width: calc(100% - 26px); }
         #canvas-wrap { 
             position: relative; width: 340px; height: 340px; border-radius: 50%; 
             background: #34495e; border: 10px solid #2c3e50; box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
@@ -18,6 +17,7 @@
         #btn { width: 100%; max-width: 360px; padding: 18px; background: #5dade2; color: white; border: none; border-radius: 12px; font-size: 20px; font-weight: bold; margin-top: 15px; box-shadow: 0 5px 0 #2e86c1; cursor: pointer; }
         #btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #2e86c1; }
         #status { margin: 15px; font-weight: bold; color: #2c3e50; font-size: 24px; height: 30px; }
+        .hint { font-size: 12px; color: #888; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -27,7 +27,7 @@
     <input type="text" class="opt"> <input type="text" class="opt">
     <input type="text" class="opt"> <input type="text" class="opt">
 </div>
-<div class="hint">系統已自動儲存您的個人選單</div>
+<div class="hint">已為您互換「來喫」與「存嘉」的判定邏輯</div>
 
 <div id="canvas-wrap"><canvas id="diceCanvas"></canvas></div>
 
@@ -37,7 +37,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const StorageManager = {
-    KEY: 'user_dice_v3_final',
+    KEY: 'user_dice_v4_fix',
     save(opts) { localStorage.setItem(this.KEY, JSON.stringify(opts)); },
     load() {
         const data = localStorage.getItem(this.KEY);
@@ -55,14 +55,14 @@ let angularVelocity = new THREE.Vector3(0, 0, 0);
 let isRolling = false;
 let isSettling = false;
 
-// 修正後的各面四元數，嚴格對應材質索引: 0:右, 1:左, 2:上, 3:下, 4:前, 5:後
+// 貼圖順序: 0:右, 1:左, 2:上, 3:下, 4:前, 5:後
 const FACE_QUATS = [
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI/2)),    // 0: 右
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI/2)),   // 1: 左
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0)),             // 2: 上
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0)),        // 3: 下
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI/2, 0, 0)),    // 4: 前
-    new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI/2, 0, 0))   // 5: 後
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI/2)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI/2)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, 0)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI/2, 0, 0)),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI/2, 0, 0))
 ];
 
 function init() {
@@ -74,15 +74,13 @@ function init() {
 
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(25, 1, 0.1, 1000);
-    camera.position.set(0, 550, 0); // 拉高相機實現徹底正視
+    camera.position.set(0, 550, 0);
     camera.lookAt(0, 0, 0);
 
     renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('diceCanvas'), antialias: true });
     renderer.setSize(340, 340);
 
     scene.add(new THREE.AmbientLight(0xffffff, 1.0));
-
-    // 骰子尺寸縮小為 8 成 (原本 85 -> 現在 68)
     const geo = new THREE.BoxGeometry(68, 68, 68);
     const mats = Array.from({length: 6}, () => new THREE.MeshPhongMaterial({ color: 0xffffff }));
     dice = new THREE.Mesh(geo, mats);
@@ -100,7 +98,7 @@ function updateTextures() {
         ctx.fillStyle = 'white';
         ctx.fillRect(0,0,256,256);
         ctx.fillStyle = 'black';
-        ctx.font = 'bold 50px sans-serif'; // 字體保持巨大
+        ctx.font = 'bold 50px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(opts[i], 128, 128);
@@ -110,7 +108,7 @@ function updateTextures() {
 
 function resetDice() {
     dice.position.set(0, 0, 0);
-    dice.quaternion.copy(FACE_QUATS[2]); // 預設顯示第三格
+    dice.quaternion.copy(FACE_QUATS[2]);
     updateTextures();
     renderer.render(scene, camera);
 }
@@ -157,9 +155,9 @@ function settle() {
     let maxDot = -1, bestIdx = 2;
     const worldUp = new THREE.Vector3(0, 1, 0);
     const normals = [
-        new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0), // 右, 左
-        new THREE.Vector3(0,1,0), new THREE.Vector3(0,-1,0), // 上, 下
-        new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)  // 前, 後
+        new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0),
+        new THREE.Vector3(0,1,0), new THREE.Vector3(0,-1,0),
+        new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)
     ];
 
     normals.forEach((n, i) => {
@@ -167,8 +165,13 @@ function settle() {
         if (wn.dot(worldUp) > maxDot) { maxDot = wn.dot(worldUp); bestIdx = i; }
     });
 
+    // --- 關鍵修正：互換來喫(4)與存嘉(5)的對應關係 ---
+    let finalIdx = bestIdx;
+    if (bestIdx === 4) finalIdx = 5;
+    else if (bestIdx === 5) finalIdx = 4;
+
     const startQ = dice.quaternion.clone();
-    const targetQ = FACE_QUATS[bestIdx].clone();
+    const targetQ = FACE_QUATS[finalIdx].clone(); // 使用修正後的索引
     const startP = dice.position.clone();
     const targetP = new THREE.Vector3(0,0,0);
     let startT = null;
@@ -183,7 +186,8 @@ function settle() {
         if (p < 1) requestAnimationFrame(anim);
         else {
             isSettling = false;
-            status.innerText = "結果：" + inputs[bestIdx].value;
+            // 結果文字也要同步使用修正後的索引
+            status.innerText = "結果：" + inputs[finalIdx].value;
             btn.disabled = false;
         }
     };
