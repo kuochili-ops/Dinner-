@@ -3,44 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D 骰子 - 淺灰碗面版</title>
+    <title>3D 骰子 - 明亮淺灰版</title>
     <style>
         :root { 
             --primary: #5dade2; 
-            --bg: #ececec; 
+            --bg: #ffffff; 
             --dark: #2c3e50; 
-            --bowl-surface: #d5d8dc; /* 淺灰色碗面 */
-            --bowl-border: #bdc3c7; 
+            --bowl-surface: #f8f9fa; /* 明亮的極淺灰 */
+            --bowl-border: #e5e8e8;  /* 碗緣色 */
         }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
         
         /* 管理區域 */
-        .manager-card { background: white; width: 90%; max-width: 420px; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 10px; z-index: 10; }
+        .manager-card { background: white; width: 90%; max-width: 420px; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 10px; z-index: 10; border: 1px solid #eee; }
         h3 { margin: 0 0 10px 0; color: var(--dark); font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
-        .pool-list { max-height: 110px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .pool-list { max-height: 110px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
         .pool-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
         .pool-item input { margin-right: 10px; }
-        .pool-item span { flex-grow: 1; }
-        .pool-item button { background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; }
+        .pool-item span { flex-grow: 1; color: #34495e; }
+        .pool-item button { background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; cursor: pointer; }
         
         .add-zone { display: flex; gap: 5px; }
-        .add-zone input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
-        .add-zone button { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 0 15px; font-weight: bold; }
+        .add-zone input { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .add-zone button { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 0 15px; font-weight: bold; cursor: pointer; }
 
-        /* 碗公容器 */
+        /* 碗公容器 - 優化為明亮感 */
         #canvas-wrap { 
             position: relative; width: 360px; height: 360px; border-radius: 50%; 
             background: var(--bowl-surface); 
-            border: 14px solid var(--bowl-border); 
-            box-shadow: inset 0 25px 60px rgba(0,0,0,0.15), 0 15px 35px rgba(0,0,0,0.1);
+            border: 12px solid var(--bowl-border); 
+            /* 輕微的內陰影，營造凹陷感但不顯黑 */
+            box-shadow: inset 0 10px 40px rgba(0,0,0,0.05), 0 10px 25px rgba(0,0,0,0.05);
             overflow: hidden; touch-action: none; margin: 5px 0;
         }
         #diceCanvas { width: 100%; height: 100%; }
         
-        #btn { width: 90%; max-width: 420px; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 15px; font-size: 22px; font-weight: bold; box-shadow: 0 6px 0 #2e86c1; cursor: pointer; transition: all 0.1s; }
-        #btn:disabled { background: #bdc3c7; box-shadow: none; transform: translateY(4px); }
+        #btn { width: 90%; max-width: 420px; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 15px; font-size: 22px; font-weight: bold; box-shadow: 0 6px 0 #2e86c1; cursor: pointer; transition: all 0.1s; margin-top: 5px; }
+        #btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #2e86c1; }
+        #btn:disabled { background: #d5dbdb; box-shadow: none; transform: translateY(4px); cursor: not-allowed; }
+        
         #status { margin: 10px; font-weight: bold; color: var(--dark); font-size: 24px; height: 32px; }
-        .count-hint { font-size: 13px; color: #d35400; }
+        .count-hint { font-size: 13px; color: #e67e22; }
     </style>
 </head>
 <body>
@@ -62,7 +65,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const AppData = {
-    KEY: 'dice_pro_v6_gray',
+    KEY: 'dice_pro_v7_bright',
     data: {
         pool: ["鳳城", "宋江", "妯娌麵", "尚芳", "來喫", "存嘉"],
         selected: ["鳳城", "宋江", "妯娌麵", "尚芳", "來喫", "存嘉"]
@@ -133,11 +136,11 @@ function drawFace(text) {
     canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = 'white'; ctx.fillRect(0,0,256,256);
-    ctx.fillStyle = 'black';
+    ctx.fillStyle = '#2c3e50'; // 深藍灰字體，比全黑更高級
     
     const chars = text.split('');
     const len = chars.length;
-    const fontSize = len > 4 ? 45 : 68; 
+    const fontSize = len > 4 ? 48 : 72; // 進一步加大字體
     ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
@@ -167,18 +170,31 @@ function updateTextures() {
 
 function init3D() {
     scene = new THREE.Scene();
+    // 讓場景背景與碗面顏色一致，消除邊界感
+    scene.background = new THREE.Color(0xf8f9fa); 
+    
     camera = new THREE.PerspectiveCamera(25, 1, 0.1, 1000);
     camera.position.set(0, 580, 0); 
     camera.lookAt(0, 0, 0);
+    
     renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('diceCanvas'), antialias: true });
     renderer.setSize(360, 360);
-    scene.add(new THREE.AmbientLight(0xffffff, 1.0));
     
-    // 大尺寸骰子 (78)
-    const geo = new THREE.BoxGeometry(78, 78, 78);
+    // 加強環境光，消除陰影黑區
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    scene.add(ambientLight);
+    
+    // 加一個頂部的柔和點光源
+    const pointLight = new THREE.PointLight(0xffffff, 0.5);
+    pointLight.position.set(0, 300, 0);
+    scene.add(pointLight);
+    
+    // 大尺寸骰子
+    const geo = new THREE.BoxGeometry(80, 80, 80);
     const mats = Array.from({length: 6}, () => new THREE.MeshPhongMaterial({ color: 0xffffff }));
     dice = new THREE.Mesh(geo, mats);
     scene.add(dice);
+    
     updateTextures();
     renderer.render(scene, camera);
 }
