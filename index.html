@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D 骰子 - 增強儲存版</title>
+    <title>3D 骰子 - 智能隨選版</title>
     <style>
         :root { 
             --bg: #eaeded; 
@@ -13,6 +13,7 @@
             --btn-yellow: #f1c40f;
             --btn-red: #e74c3c;
             --btn-red-dark: #c0392b;
+            --accent: #5dade2;
         }
         body { font-family: -apple-system, sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
         
@@ -23,7 +24,7 @@
         .arrow.open { transform: rotate(180deg); }
         
         .manager-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 15px; }
-        .manager-content.open { max-height: 500px; padding: 0 15px 15px 15px; }
+        .manager-content.open { max-height: 600px; padding: 0 15px 15px 15px; }
 
         .pool-list { max-height: 120px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
         .pool-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
@@ -31,13 +32,21 @@
         .pool-item span { flex-grow: 1; }
         .pool-item button { background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 11px; }
         
-        .add-zone { display: flex; gap: 5px; margin-bottom: 10px; }
-        .add-zone input { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .action-zone { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+        .add-zone { display: flex; gap: 5px; }
+        .add-zone input { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         .add-zone button { background: var(--dark); color: white; border: none; border-radius: 8px; padding: 0 15px; }
+        
+        /* 隨選按鈕樣式 */
+        .random-btn { 
+            background: #fdfefe; border: 1.5px solid var(--accent); color: var(--accent);
+            padding: 8px; border-radius: 8px; font-weight: bold; font-size: 14px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .random-btn:active { background: var(--accent); color: white; }
 
-        /* 備份區域 */
         .backup-zone { border-top: 1px dashed #ccc; padding-top: 10px; display: flex; gap: 5px; }
-        .backup-zone button { flex: 1; padding: 8px; font-size: 12px; border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer; }
+        .backup-zone button { flex: 1; padding: 8px; font-size: 11px; border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; }
 
         #canvas-wrap { 
             position: relative; width: 320px; height: 320px; border-radius: 50%; 
@@ -77,13 +86,16 @@
     </div>
     <div class="manager-content" id="managerContent">
         <div class="pool-list" id="poolList"></div>
-        <div class="add-zone">
-            <input type="text" id="newOptName" placeholder="新增...">
-            <button id="addBtn">加</button>
+        <div class="action-zone">
+            <div class="add-zone">
+                <input type="text" id="newOptName" placeholder="新增餐廳...">
+                <button id="addBtn">加</button>
+            </div>
+            <button class="random-btn" onclick="randomPickSix()">🎲 隨選六家 (換換口味)</button>
         </div>
         <div class="backup-zone">
-            <button onclick="exportData()">💾 備份名單</button>
-            <button onclick="importData()">📂 恢復名單</button>
+            <button onclick="exportData()">💾 備份</button>
+            <button onclick="importData()">📂 恢復</button>
         </div>
     </div>
 </div>
@@ -99,55 +111,43 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// --- 資料管理 (LocalStorage + 備份功能) ---
 const AppData = {
     KEY: 'DICE_APP_STORAGE_V1',
     data: {
         pool: ["鳳城", "宋江", "妯娌麵", "尚芳", "來喫", "存嘉"],
         selected: ["鳳城", "宋江", "妯娌麵", "尚芳", "來喫", "存嘉"]
     },
-    save() { 
-        try {
-            localStorage.setItem(this.KEY, JSON.stringify(this.data)); 
-        } catch(e) {
-            console.error("儲存失敗", e);
-        }
-    },
+    save() { localStorage.setItem(this.KEY, JSON.stringify(this.data)); },
     load() {
         const saved = localStorage.getItem(this.KEY);
-        if(saved) {
-            try {
-                this.data = JSON.parse(saved);
-            } catch(e) {
-                console.error("解析失敗");
-            }
-        }
+        if(saved) { try { this.data = JSON.parse(saved); } catch(e) {} }
     }
 };
 
-// 備份功能：將資料轉成文字彈出
-function exportData() {
-    const str = JSON.stringify(AppData.data);
-    const blob = new Blob([str], {type: 'text/plain'});
-    alert("您的名單代碼為：\n" + str + "\n\n請複製儲存在記事本中。");
+// --- 隨選功能 ---
+function randomPickSix() {
+    const all = AppData.data.pool;
+    if (all.length < 6) {
+        alert("名單庫不足 6 家，請先新增更多選項！");
+        return;
+    }
+    // 洗牌算法
+    const shuffled = [...all].sort(() => 0.5 - Math.random());
+    AppData.data.selected = shuffled.slice(0, 6);
+    
+    AppData.save();
+    renderPool();
+    updateTextures();
 }
 
-// 恢復功能：貼上文字載入
+function exportData() { alert("備份代碼：\n" + JSON.stringify(AppData.data)); }
 function importData() {
-    const str = prompt("請貼上您備份的名單代碼：");
+    const str = prompt("請貼上備份代碼：");
     if(str) {
         try {
-            const parsed = JSON.parse(str);
-            if(parsed.pool && parsed.selected) {
-                AppData.data = parsed;
-                AppData.save();
-                renderPool();
-                updateTextures();
-                alert("恢復成功！");
-            }
-        } catch(e) {
-            alert("代碼格式不正確！");
-        }
+            const p = JSON.parse(str);
+            if(p.pool) { AppData.data = p; AppData.save(); renderPool(); updateTextures(); alert("成功！"); }
+        } catch(e) { alert("失敗！"); }
     }
 }
 
@@ -155,7 +155,6 @@ let scene, camera, renderer, dice;
 let isRolling = false, isSettling = false;
 let velocity = new THREE.Vector3(), angularVelocity = new THREE.Vector3();
 
-// --- UI 控制 ---
 const toggleHeader = document.getElementById('toggleHeader');
 const managerContent = document.getElementById('managerContent');
 const arrow = document.getElementById('arrow');
@@ -181,7 +180,7 @@ function toggleSelect(item) {
     const idx = AppData.data.selected.indexOf(item);
     if (idx > -1) AppData.data.selected.splice(idx, 1);
     else {
-        if (AppData.data.selected.length >= 6) { alert("已選滿 6 項！"); renderPool(); return; }
+        if (AppData.data.selected.length >= 6) { alert("已滿 6 項"); renderPool(); return; }
         AppData.data.selected.push(item);
     }
     AppData.save(); updateUIStatus(); updateTextures();
@@ -192,13 +191,8 @@ function updateUIStatus() {
     document.getElementById('countHint').innerText = `已選: ${count}/6`;
     const btnBase = document.getElementById('btnBase');
     const btnTrigger = document.getElementById('btnTrigger');
-    if (count === 6) {
-        btnBase.classList.remove('disabled');
-        btnTrigger.innerText = "GO!";
-    } else {
-        btnBase.classList.add('disabled');
-        btnTrigger.innerText = `${6-count}`;
-    }
+    if (count === 6) { btnBase.classList.remove('disabled'); btnTrigger.innerText = "GO!"; } 
+    else { btnBase.classList.add('disabled'); btnTrigger.innerText = `${6-count}`; }
 }
 
 function removeItem(item) {
@@ -215,7 +209,6 @@ document.getElementById('addBtn').onclick = () => {
     }
 };
 
-// --- 3D 邏輯 (保持點數排版) ---
 function drawFace(text) {
     const canvas = document.createElement('canvas'); canvas.width = 256; canvas.height = 256;
     const ctx = canvas.getContext('2d');
@@ -223,8 +216,7 @@ function drawFace(text) {
     ctx.fillStyle = '#1c2833'; 
     const chars = text.split(''); const len = chars.length;
     const fontSize = len > 4 ? 46 : 72;
-    ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `bold ${fontSize}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const positions = { 1: [[128, 128]], 2: [[70, 70], [186, 186]], 3: [[70, 70], [186, 70], [128, 186]], 4: [[70, 70], [186, 70], [70, 186], [186, 186]], 5: [[70, 70], [186, 70], [128, 128], [70, 186], [186, 186]], 6: [[70, 55], [186, 55], [70, 128], [186, 128], [70, 201], [186, 201]] };
     const pos = positions[Math.min(len, 6)] || [[128, 128]];
     chars.forEach((char, i) => { if(pos[i]) ctx.fillText(char, pos[i][0], pos[i][1]); });
