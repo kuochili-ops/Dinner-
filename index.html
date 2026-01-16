@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D 骰子 - 智能隨選版</title>
+    <title>3D 骰子 - 專業備份版</title>
     <style>
         :root { 
             --bg: #eaeded; 
@@ -17,6 +17,7 @@
         }
         body { font-family: -apple-system, sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
         
+        /* 管理卡片 */
         .manager-card { background: white; width: 95%; max-width: 400px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 10px; overflow: hidden; z-index: 10; border: 1px solid #ddd; }
         .manager-header { padding: 12px 15px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .manager-header h3 { margin: 0; font-size: 16px; color: var(--dark); }
@@ -24,10 +25,10 @@
         .arrow.open { transform: rotate(180deg); }
         
         .manager-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; padding: 0 15px; }
-        .manager-content.open { max-height: 600px; padding: 0 15px 15px 15px; }
+        .manager-content.open { max-height: 80vh; padding: 0 15px 15px 15px; overflow-y: auto; }
 
-        .pool-list { max-height: 120px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
-        .pool-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
+        .pool-list { max-height: 100px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
+        .pool-item { display: flex; align-items: center; padding: 6px 8px; border-bottom: 1px solid #f5f5f5; font-size: 14px; }
         .pool-item input { margin-right: 10px; }
         .pool-item span { flex-grow: 1; }
         .pool-item button { background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 8px; font-size: 11px; }
@@ -37,51 +38,53 @@
         .add-zone input { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         .add-zone button { background: var(--dark); color: white; border: none; border-radius: 8px; padding: 0 15px; }
         
-        /* 隨選按鈕樣式 */
         .random-btn { 
             background: #fdfefe; border: 1.5px solid var(--accent); color: var(--accent);
-            padding: 8px; border-radius: 8px; font-weight: bold; font-size: 14px;
-            cursor: pointer; transition: all 0.2s;
+            padding: 8px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer;
         }
-        .random-btn:active { background: var(--accent); color: white; }
 
-        .backup-zone { border-top: 1px dashed #ccc; padding-top: 10px; display: flex; gap: 5px; }
-        .backup-zone button { flex: 1; padding: 8px; font-size: 11px; border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; }
+        /* 增強版備份區域 */
+        .backup-zone { border-top: 1px dashed #ccc; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .backup-btns { display: flex; gap: 5px; }
+        .backup-btns button { flex: 1; padding: 10px; font-size: 12px; border-radius: 6px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer; }
+        
+        #backupDisplay { display: none; margin-top: 5px; }
+        #backupTextarea { width: 100%; height: 60px; font-size: 10px; padding: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; background: #fdfefe; }
+        .copy-hint-btn { background: #27ae60 !important; color: white !important; border: none !important; margin-top: 5px; width: 100%; padding: 8px; border-radius: 5px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
+        /* 碗公縮小一點以騰出空間 */
         #canvas-wrap { 
-            position: relative; width: 320px; height: 320px; border-radius: 50%; 
-            background: var(--bowl-surface); border: 12px solid var(--bowl-border); 
+            position: relative; width: 300px; height: 300px; border-radius: 50%; 
+            background: var(--bowl-surface); border: 10px solid var(--bowl-border); 
             box-shadow: inset 0 15px 40px rgba(0,0,0,0.1), 0 10px 25px rgba(0,0,0,0.05);
-            overflow: hidden; touch-action: none; margin: 10px 0;
+            overflow: hidden; touch-action: none; margin: 5px 0;
         }
         #diceCanvas { width: 100%; height: 100%; }
 
-        /* 黃座紅鈕 */
-        .btn-wrapper { margin-top: 10px; }
+        .btn-wrapper { margin-top: 5px; }
         .btn-base {
-            width: 90px; height: 90px; background: var(--btn-yellow); border-radius: 15px;
+            width: 85px; height: 85px; background: var(--btn-yellow); border-radius: 15px;
             display: flex; justify-content: center; align-items: center;
             box-shadow: 0 6px 0 #d4ac0d, 0 10px 15px rgba(0,0,0,0.1);
             position: relative; cursor: pointer; transition: transform 0.1s;
         }
         .btn-trigger {
-            width: 60px; height: 60px; background: radial-gradient(circle at 30% 30%, #ff5e57, var(--btn-red));
+            width: 55px; height: 55px; background: radial-gradient(circle at 30% 30%, #ff5e57, var(--btn-red));
             border-radius: 50%; box-shadow: 0 4px 0 var(--btn-red-dark);
-            display: flex; justify-content: center; align-items: center; color: white; font-weight: bold;
-            pointer-events: none;
+            display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; pointer-events: none;
         }
         .btn-base:active { transform: translateY(3px); box-shadow: 0 3px 0 #d4ac0d; }
         .btn-base.disabled { background: #d5dbdb; cursor: not-allowed; box-shadow: 0 4px 0 #aab7b8; }
         .btn-base.disabled .btn-trigger { background: #bdc3c7; box-shadow: 0 2px 0 #95a5a6; }
 
-        #status { margin: 10px; font-weight: bold; color: var(--dark); font-size: 20px; height: 28px; text-align: center; }
+        #status { margin: 8px; font-weight: bold; color: var(--dark); font-size: 18px; height: 26px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="manager-card">
     <div class="manager-header" id="toggleHeader">
-        <h3>名單管理 <span id="countHint" style="font-size:12px; color:#e67e22;">載入中...</span></h3>
+        <h3>名單管理 <span id="countHint" style="font-size:12px; color:#e67e22;">已選: 6/6</span></h3>
         <span class="arrow" id="arrow">▼</span>
     </div>
     <div class="manager-content" id="managerContent">
@@ -94,8 +97,14 @@
             <button class="random-btn" onclick="randomPickSix()">🎲 隨選六家 (換換口味)</button>
         </div>
         <div class="backup-zone">
-            <button onclick="exportData()">💾 備份</button>
-            <button onclick="importData()">📂 恢復</button>
+            <div class="backup-btns">
+                <button onclick="showBackupCode()">💾 產生備份碼</button>
+                <button onclick="importData()">📂 恢復名單</button>
+            </div>
+            <div id="backupDisplay">
+                <textarea id="backupTextarea" readonly></textarea>
+                <button class="copy-hint-btn" onclick="copyBackupCode()">一鍵複製代碼</button>
+            </div>
         </div>
     </div>
 </div>
@@ -124,35 +133,51 @@ const AppData = {
     }
 };
 
-// --- 隨選功能 ---
-function randomPickSix() {
-    const all = AppData.data.pool;
-    if (all.length < 6) {
-        alert("名單庫不足 6 家，請先新增更多選項！");
-        return;
-    }
-    // 洗牌算法
-    const shuffled = [...all].sort(() => 0.5 - Math.random());
-    AppData.data.selected = shuffled.slice(0, 6);
-    
-    AppData.save();
-    renderPool();
-    updateTextures();
+// --- 增強備份與複製功能 ---
+function showBackupCode() {
+    const display = document.getElementById('backupDisplay');
+    const textarea = document.getElementById('backupTextarea');
+    textarea.value = JSON.stringify(AppData.data);
+    display.style.display = 'block';
 }
 
-function exportData() { alert("備份代碼：\n" + JSON.stringify(AppData.data)); }
+function copyBackupCode() {
+    const textarea = document.getElementById('backupTextarea');
+    textarea.select();
+    textarea.setSelectionRange(0, 99999); // 手機相容性
+    document.execCommand("copy");
+    
+    const btn = document.querySelector('.copy-hint-btn');
+    const originalText = btn.innerText;
+    btn.innerText = "✅ 已複製到剪貼簿！";
+    setTimeout(() => { btn.innerText = originalText; }, 2000);
+}
+
 function importData() {
     const str = prompt("請貼上備份代碼：");
     if(str) {
         try {
             const p = JSON.parse(str);
-            if(p.pool) { AppData.data = p; AppData.save(); renderPool(); updateTextures(); alert("成功！"); }
-        } catch(e) { alert("失敗！"); }
+            if(p.pool) { 
+                AppData.data = p; AppData.save(); 
+                renderPool(); updateTextures(); 
+                alert("恢復成功！");
+                document.getElementById('backupDisplay').style.display = 'none';
+            }
+        } catch(e) { alert("代碼無效，請確認是否複製完整。"); }
     }
 }
 
-let scene, camera, renderer, dice;
-let isRolling = false, isSettling = false;
+function randomPickSix() {
+    const all = AppData.data.pool;
+    if (all.length < 6) { alert("名單庫不足 6 家！"); return; }
+    const shuffled = [...all].sort(() => 0.5 - Math.random());
+    AppData.data.selected = shuffled.slice(0, 6);
+    AppData.save(); renderPool(); updateTextures();
+}
+
+// --- 3D & UI 控制 (略縮) ---
+let scene, camera, renderer, dice, isRolling = false, isSettling = false;
 let velocity = new THREE.Vector3(), angularVelocity = new THREE.Vector3();
 
 const toggleHeader = document.getElementById('toggleHeader');
@@ -232,7 +257,7 @@ function init3D() {
     scene = new THREE.Scene(); scene.background = new THREE.Color(0xe2e4e6); 
     camera = new THREE.PerspectiveCamera(25, 1, 0.1, 1000); camera.position.set(0, 580, 0); camera.lookAt(0, 0, 0);
     renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('diceCanvas'), antialias: true });
-    renderer.setSize(320, 320);
+    renderer.setSize(300, 300);
     scene.add(new THREE.AmbientLight(0xffffff, 0.9));
     const pointLight = new THREE.PointLight(0xffffff, 0.4); pointLight.position.set(0, 300, 100); scene.add(pointLight);
     dice = new THREE.Mesh(new THREE.BoxGeometry(80, 80, 80), Array.from({length: 6}, () => new THREE.MeshPhongMaterial({ color: 0xffffff })));
