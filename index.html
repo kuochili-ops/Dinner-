@@ -3,35 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D 骰子 - 專業排版管理版</title>
+    <title>3D 骰子 - 淺灰碗面版</title>
     <style>
-        :root { --primary: #5dade2; --bg: #e5e7e9; --dark: #2c3e50; --bowl: #bdc3c7; }
+        :root { 
+            --primary: #5dade2; 
+            --bg: #ececec; 
+            --dark: #2c3e50; 
+            --bowl-surface: #d5d8dc; /* 淺灰色碗面 */
+            --bowl-border: #bdc3c7; 
+        }
         body { font-family: -apple-system, sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 10px; margin: 0; }
         
+        /* 管理區域 */
         .manager-card { background: white; width: 90%; max-width: 420px; padding: 15px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 10px; z-index: 10; }
         h3 { margin: 0 0 10px 0; color: var(--dark); font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
-        .pool-list { max-height: 120px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
+        .pool-list { max-height: 110px; overflow-y: auto; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px; }
         .pool-item { display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
         .pool-item input { margin-right: 10px; }
         .pool-item span { flex-grow: 1; }
-        .pool-item button { background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 12px; }
+        .pool-item button { background: #ff7675; color: white; border: none; border-radius: 4px; padding: 2px 6px; font-size: 11px; }
         
         .add-zone { display: flex; gap: 5px; }
         .add-zone input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
         .add-zone button { background: var(--primary); color: white; border: none; border-radius: 8px; padding: 0 15px; font-weight: bold; }
 
+        /* 碗公容器 */
         #canvas-wrap { 
             position: relative; width: 360px; height: 360px; border-radius: 50%; 
-            background: var(--bowl); border: 12px solid #aeb6bf; 
-            box-shadow: inset 0 20px 60px rgba(0,0,0,0.2), 0 10px 30px rgba(0,0,0,0.1);
+            background: var(--bowl-surface); 
+            border: 14px solid var(--bowl-border); 
+            box-shadow: inset 0 25px 60px rgba(0,0,0,0.15), 0 15px 35px rgba(0,0,0,0.1);
             overflow: hidden; touch-action: none; margin: 5px 0;
         }
         #diceCanvas { width: 100%; height: 100%; }
         
         #btn { width: 90%; max-width: 420px; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 15px; font-size: 22px; font-weight: bold; box-shadow: 0 6px 0 #2e86c1; cursor: pointer; transition: all 0.1s; }
         #btn:disabled { background: #bdc3c7; box-shadow: none; transform: translateY(4px); }
-        #status { margin: 10px; font-weight: bold; color: var(--dark); font-size: 24px; height: 32px; text-shadow: 0 1px 2px rgba(255,255,255,0.8); }
-        .count-hint { font-size: 13px; color: #d35400; font-weight: normal; }
+        #status { margin: 10px; font-weight: bold; color: var(--dark); font-size: 24px; height: 32px; }
+        .count-hint { font-size: 13px; color: #d35400; }
     </style>
 </head>
 <body>
@@ -53,7 +62,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const AppData = {
-    KEY: 'dice_pro_v5_final',
+    KEY: 'dice_pro_v6_gray',
     data: {
         pool: ["鳳城", "宋江", "妯娌麵", "尚芳", "來喫", "存嘉"],
         selected: ["鳳城", "宋江", "妯娌麵", "尚芳", "來喫", "存嘉"]
@@ -69,7 +78,6 @@ let scene, camera, renderer, dice;
 let isRolling = false, isSettling = false;
 let velocity = new THREE.Vector3(), angularVelocity = new THREE.Vector3();
 
-// --- 介面控制 ---
 function renderPool() {
     const list = document.getElementById('poolList');
     list.innerHTML = '';
@@ -80,7 +88,7 @@ function renderPool() {
         div.innerHTML = `
             <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelect('${item}')">
             <span>${item}</span>
-            <button onclick="removeItem('${item}')">刪</button>
+            <button onclick="removeItem('${item}')">刪除</button>
         `;
         list.appendChild(div);
     });
@@ -91,7 +99,7 @@ function toggleSelect(item) {
     const idx = AppData.data.selected.indexOf(item);
     if (idx > -1) AppData.data.selected.splice(idx, 1);
     else {
-        if (AppData.data.selected.length >= 6) { alert("已滿 6 項！"); renderPool(); return; }
+        if (AppData.data.selected.length >= 6) { alert("已選滿 6 項！"); renderPool(); return; }
         AppData.data.selected.push(item);
     }
     AppData.save(); updateUIStatus(); updateTextures();
@@ -105,7 +113,7 @@ function removeItem(item) {
 
 function updateUIStatus() {
     const count = AppData.data.selected.length;
-    document.getElementById('countHint').innerText = `已選: ${count}/6`;
+    document.getElementById('countHint').innerText = `已勾選: ${count}/6`;
     const btn = document.getElementById('btn');
     btn.disabled = count !== 6;
     btn.innerText = count === 6 ? "開始擲骰" : `還差 ${6-count} 個`;
@@ -119,7 +127,7 @@ document.getElementById('addBtn').onclick = () => {
     }
 };
 
-// --- 骰子貼圖：仿點數排列演算法 ---
+// 點數排版邏輯
 function drawFace(text) {
     const canvas = document.createElement('canvas');
     canvas.width = 256; canvas.height = 256;
@@ -129,23 +137,23 @@ function drawFace(text) {
     
     const chars = text.split('');
     const len = chars.length;
-    const fontSize = len > 4 ? 45 : 65; // 字數多則縮小
+    const fontSize = len > 4 ? 45 : 68; 
     ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
     const positions = {
         1: [[128, 128]],
-        2: [[64, 64], [192, 192]],
-        3: [[64, 64], [192, 64], [128, 192]],
-        4: [[64, 64], [192, 64], [64, 192], [192, 192]],
-        5: [[64, 64], [192, 64], [128, 128], [64, 192], [192, 192]],
-        6: [[64, 50], [192, 50], [64, 128], [192, 128], [64, 206], [192, 206]]
+        2: [[70, 70], [186, 186]],
+        3: [[70, 70], [186, 70], [128, 186]],
+        4: [[70, 70], [186, 70], [70, 186], [186, 186]],
+        5: [[70, 70], [186, 70], [128, 128], [70, 186], [186, 186]],
+        6: [[70, 55], [186, 55], [70, 128], [186, 128], [70, 201], [186, 201]]
     };
 
     const pos = positions[Math.min(len, 6)] || [[128, 128]];
     chars.forEach((char, i) => {
         if(pos[i]) ctx.fillText(char, pos[i][0], pos[i][1]);
-        else if (i === 0) ctx.fillText(text, 128, 128); // 超過6字改回一般排列
+        else if (i === 0) ctx.fillText(text, 128, 128); 
     });
     return new THREE.CanvasTexture(canvas);
 }
@@ -157,7 +165,6 @@ function updateTextures() {
     });
 }
 
-// --- 3D 初始化 ---
 function init3D() {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(25, 1, 0.1, 1000);
@@ -167,8 +174,8 @@ function init3D() {
     renderer.setSize(360, 360);
     scene.add(new THREE.AmbientLight(0xffffff, 1.0));
     
-    // 增加骰子尺寸至 75
-    const geo = new THREE.BoxGeometry(75, 75, 75);
+    // 大尺寸骰子 (78)
+    const geo = new THREE.BoxGeometry(78, 78, 78);
     const mats = Array.from({length: 6}, () => new THREE.MeshPhongMaterial({ color: 0xffffff }));
     dice = new THREE.Mesh(geo, mats);
     scene.add(dice);
@@ -184,7 +191,7 @@ function roll() {
     angularVelocity.set(Math.random()*10, Math.random()*10, Math.random()*10);
     isRolling = true;
     document.getElementById('btn').disabled = true;
-    status.innerText = "轉動中...";
+    document.getElementById('status').innerText = "擲骰中...";
 
     const anim = () => {
         if (!isRolling) return;
